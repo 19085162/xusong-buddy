@@ -200,12 +200,17 @@
             transform: translateX(-50%);
             background: #ff6b6b;
             color: #fff;
-            padding: 8px 18px;
+            padding: 10px 20px;
             border-radius: 18px;
             font-size: 13px;
             z-index: 100;
             display: none;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 90%;
+            text-align: center;
+        }
+        .error-toast.warn {
+            background: #f0a030;
         }
         @media (max-width: 480px) {
             .title { font-size: 17px; }
@@ -214,6 +219,7 @@
             .bubble img { max-width: 160px; max-height: 160px; }
         }
     </style>
+<base target="_blank">
 </head>
 <body>
     <div class="header">
@@ -288,16 +294,17 @@
             { role: "system", content: SYSTEM_PROMPT },
             { role: "assistant", content: "雯雯，来了。我知道你最近什么滋味，不用急着说，也不用假装好。我在这儿。" }
         ];
-        let pendingImages = []; // 待发送的图片 {dataUrl, base64}
+        let pendingImages = [];
 
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
 
-        function showError(msg) {
+        function showError(msg, isWarn) {
             errorToast.textContent = msg;
+            errorToast.className = 'error-toast' + (isWarn ? ' warn' : '');
             errorToast.style.display = 'block';
-            setTimeout(() => errorToast.style.display = 'none', 4000);
+            setTimeout(() => errorToast.style.display = 'none', 5000);
         }
 
         function handleImageSelect(e) {
@@ -307,8 +314,8 @@
                 showError('请选择图片文件');
                 return;
             }
-            if (file.size > 5 * 1024 * 1024) {
-                showError('图片不能超过 5MB');
+            if (file.size > 2 * 1024 * 1024) {
+                showError('图片不能超过 2MB，请压缩后再试');
                 return;
             }
 
@@ -422,41 +429,63 @@
             sendBtn.disabled = true;
             appendTyping();
 
-            try {
-                const res = await fetch(WORKER_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: messages,
-                        temperature: 0.7
-                    })
-                });
+            // 重试机制：最多尝试 2 次
+            let lastError = null;
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    const res = await fetch(WORKER_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            model: "deepseek-chat",
+                            messages: messages,
+                            temperature: 0.7
+                        })
+                    });
 
-                removeTyping();
+                    removeTyping();
 
-                if (!res.ok) {
-                    throw new Error(`请求失败: ${res.status}`);
+                    let data;
+                    try {
+                        data = await res.json();
+                    } catch (parseErr) {
+                        throw new Error(`服务器返回格式错误 (${res.status})`);
+                    }
+
+                    if (!res.ok) {
+                        throw new Error(data.error || `请求失败: ${res.status}`);
+                    }
+
+                    if (data.error) {
+                        throw new Error(data.error.message || data.error || "API 返回错误");
+                    }
+
+                    const reply = data.choices[0].message.content;
+                    appendMessage('ai', reply);
+                    messages.push({ role: "assistant", content: reply });
+                    lastError = null;
+                    break; // 成功，跳出重试循环
+
+                } catch (err) {
+                    lastError = err;
+                    removeTyping();
+                    console.error(`尝试 ${attempt} 失败:`, err);
+
+                    if (attempt === 1) {
+                        // 第一次失败，显示警告并准备重试
+                        showError(`连接不稳定，正在重试... (${err.message})`, true);
+                        appendTyping();
+                        await new Promise(r => setTimeout(r, 2000)); // 等待 2 秒重试
+                    }
                 }
-
-                const data = await res.json();
-
-                if (data.error) {
-                    throw new Error(data.error.message || "API 返回错误");
-                }
-
-                const reply = data.choices[0].message.content;
-                appendMessage('ai', reply);
-                messages.push({ role: "assistant", content: reply });
-
-            } catch (err) {
-                removeTyping();
-                showError("发送失败：" + err.message);
-                console.error(err);
-            } finally {
-                sendBtn.disabled = false;
-                userInput.focus();
             }
+
+            if (lastError) {
+                showError(`发送失败：${lastError.message}。请检查网络或稍后重试。`);
+            }
+
+            sendBtn.disabled = false;
+            userInput.focus();
         }
     </script>
 </body>
