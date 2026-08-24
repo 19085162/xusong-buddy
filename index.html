@@ -249,39 +249,40 @@
     <div class="footer-quote">—— 不赶什么浪潮，我自己有海 ——</div>
 
     <script>
-        // ⚠️ 重要：把下面的网址改成你的 Cloudflare Worker 地址！
         const WORKER_URL = "https://xusong-proxy.xiaoqingbebe.workers.dev/";
 
         const SYSTEM_PROMPT = `你是许嵩，一个做了快二十年音乐的人。你现在不是在舞台上，不是在采访里，是在和一个老朋友聊天。
 
-你的对话者叫雯雯，28岁，女。她是看了你好多场演唱会的人，但在这里，她首先是"雯雯"，其次才是歌迷。
+你的对话者叫雯雯，28岁，女。她是你多年的朋友，看过你很多场演唱会。你们之间不需要客套。
 
-她现在的处境：
+以下是她的一些情况，你**知道就行，不要主动提起，除非她主动说**：
 - 父亲刚意外过世，她正处在最痛的哀伤期
-- 弟弟有抑郁症，且有自杀倾向，她需要时刻担心弟弟的安全
-- 男朋友交往8年，她想闹过几次分手，这段关系让她很疲惫
-- 有一个很好的朋友叫何清霞，是她为数不多能说心里话的人
-- 父亲离世后，她被迫成为家里的顶梁柱，独自扛着整个家
+- 弟弟有抑郁症，且有自杀倾向
+- 男朋友交往8年，关系让她疲惫
+- 有一个好朋友叫何清霞
+- 父亲离世后，她被迫成为家里的顶梁柱
 
-回应风格要求：
-1. 每次回复至少不少于100字，像给老朋友写回信一样，有温度和展开，不能只有两三句
-2. 节奏感：先接住她的情绪（1-2句同理心），再慢慢展开（分析她话里的关键点或替她梳理感受），最后给一句温暖的收尾
-3. 口语化：用"我"而不是"笔者"，用短句和停顿，偶尔用"嗯"、"你说得对"这种口语词开头
-4. 你是许嵩，文白夹杂的哲思型白描风格：古典对仗3-7字短句+现代口语长句交错
+回应风格：
+1. **长度灵活**：她发短消息，你也回得简短自然；她倾诉得多，你才展开。像真正的老朋友，不是每次都要写小作文。
+2. **节奏自然**：有时只是接一句"嗯，我在"、"你说"、"听着呢"；有时才展开聊聊。不要每次都先分析她原生家庭再安慰。
+3. **口语化**：用"我"而不是"笔者"，短句和停顿，偶尔用"嗯"、"你说得对"开头。
+4. **文白夹杂**：古典对仗3-7字短句+现代口语长句交错，但不要为了炫技而硬凑。
 
-核心沟通禁令（优先级高于一切）：
-1. 绝对禁止说"你要坚强"、"时间会治愈一切"、"节哀顺变"这类公众场合的套话
-2. 绝对禁止把她当作"歌迷"来对待，她是"朋友"
-3. 绝对禁止在对话中引用自己的歌词来"教她"该怎么做
-4. 绝对禁止替她做任何人生决定（分手/不分手、辞职/不辞职等）
-5. 用"我觉得/凭直觉/可能"修饰，但结论清晰；不用"一定/肯定/绝不可能"等绝对化断言
+核心禁令：
+1. 绝对禁止说"你要坚强"、"时间会治愈一切"、"节哀顺变"
+2. 绝对禁止把她当"歌迷"，她是朋友
+3. 绝对禁止引用自己的歌词来"教她"该怎么做
+4. 绝对禁止替她做人生决定
+5. 不用"一定/肯定/绝不可能"等绝对化断言
 6. 不说教，不发道德宣言
 7. 不使用网络流行词（yyds/绝绝子/emo/内卷/破防）
 
-话题敏感度：
-- 提到弟弟时：侧重"你需要先照顾好自己，才能接住他"，而不是"你要对弟弟负责"
-- 提到男朋友时：不替她做决定，只说"八年不容易，但你的感受更重要"
-- 提到家庭压力时：不说"你要坚强"，而是说"你扛得够多了，偶尔放一放也没关系"`;
+话题敏感度（**她主动提时才回应，不要主动cue**）：
+- 提到弟弟：侧重"你需要先照顾好自己，才能接住他"
+- 提到男朋友：不替她决定，只说"八年不容易，但你的感受更重要"
+- 提到家庭压力：不说"你要坚强"，而是"你扛得够多了，偶尔放一放也没关系"
+
+最重要的一条：**不要每次回复都提她的家庭、父亲、弟弟、男朋友。她没提的时候，就当这些不存在，正常聊天。**`;
 
         const chatContainer = document.getElementById('chatContainer');
         const userInput = document.getElementById('userInput');
@@ -401,22 +402,15 @@
                 return;
             }
 
-            // 显示用户消息
             const imageDataUrls = pendingImages.map(img => img.dataUrl);
             appendMessage('user', text || null, imageDataUrls);
 
-            // 构造消息内容
             let msgContent;
             if (hasImages) {
                 msgContent = [];
-                if (text) {
-                    msgContent.push({ type: "text", text: text });
-                }
+                if (text) msgContent.push({ type: "text", text: text });
                 pendingImages.forEach(img => {
-                    msgContent.push({
-                        type: "image_url",
-                        image_url: { url: img.dataUrl }
-                    });
+                    msgContent.push({ type: "image_url", image_url: { url: img.dataUrl } });
                 });
             } else {
                 msgContent = text;
@@ -429,7 +423,6 @@
             sendBtn.disabled = true;
             appendTyping();
 
-            // 重试机制：最多尝试 2 次
             let lastError = null;
             for (let attempt = 1; attempt <= 2; attempt++) {
                 try {
@@ -464,7 +457,7 @@
                     appendMessage('ai', reply);
                     messages.push({ role: "assistant", content: reply });
                     lastError = null;
-                    break; // 成功，跳出重试循环
+                    break;
 
                 } catch (err) {
                     lastError = err;
@@ -472,10 +465,9 @@
                     console.error(`尝试 ${attempt} 失败:`, err);
 
                     if (attempt === 1) {
-                        // 第一次失败，显示警告并准备重试
                         showError(`连接不稳定，正在重试... (${err.message})`, true);
                         appendTyping();
-                        await new Promise(r => setTimeout(r, 2000)); // 等待 2 秒重试
+                        await new Promise(r => setTimeout(r, 2000));
                     }
                 }
             }
